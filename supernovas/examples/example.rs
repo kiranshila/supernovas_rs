@@ -1,7 +1,7 @@
 //! Modelled after SuperNOVAS example.c
 use hifitime::{prelude::*, ut1::Ut1Provider};
 use supernovas::{
-    positions::{CatalogEntry, SurfaceObserver},
+    positions::{CatalogEntry, Frame, SurfaceObserver},
     time::Timespec,
     Accuracy,
 };
@@ -23,7 +23,7 @@ pub fn main() {
     println!("Timespec: {:#?}", time);
 
     // Setup the observing frame
-    //let frame = Frame::new(Accuracy::Full, &location, &time, 0.0, 0.0).unwrap();
+    let frame = Frame::new(Accuracy::Full, &location, &time, 0.0, 0.0).unwrap();
 
     // Make a catalog entry for a sidereal source
     let entry = CatalogEntry::new(

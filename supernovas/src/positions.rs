@@ -117,41 +117,39 @@ impl CatalogEntry {
     }
 }
 
-// /// A set of parameters that uniquely define the place and time of observation
-// pub struct Frame<'a> {
-//     inner: novas_frame,
-//     obs_marker: PhantomData<&'a SurfaceObserver>,
-//     time_marker: PhantomData<&'a Timespec>,
-// }
+/// A set of parameters that uniquely define the place and time of observation
+pub struct Frame<'a> {
+    inner: novas_frame,
+    _marker: PhantomData<&'a ()>,
+}
 
-// impl<'a> Frame<'a> {
-//     pub fn new(
-//         acc: Accuracy,
-//         obs: &SurfaceObserver,
-//         time: &Timespec,
-//         dx: f64,
-//         dy: f64,
-//     ) -> super::Result<Self> {
-//         let inner_acc = novas_accuracy(acc as u32);
-//         // NOTE: This structure holds on to references to the observer and time, so it must capture their lifetimes
-//         let mut frame = MaybeUninit::uninit();
-//         let frame = unsafe {
-//             let ret = novas_make_frame(
-//                 inner_acc,
-//                 &(obs.0) as *const _,
-//                 &(time.0) as *const _,
-//                 dx,
-//                 dy,
-//                 frame.as_mut_ptr(),
-//             );
-//             // check ret
-//             assert_eq!(ret, 0);
-//             frame.assume_init()
-//         };
-//         Ok(Frame {
-//             inner: frame,
-//             obs_marker: PhantomData,
-//             time_marker: PhantomData,
-//         })
-//     }
-// }
+impl<'a> Frame<'a> {
+    pub fn new(
+        acc: Accuracy,
+        obs: &'a SurfaceObserver,
+        time: &'a Timespec,
+        dx: f64,
+        dy: f64,
+    ) -> super::Result<Self> {
+        let inner_acc = novas_accuracy(acc as u32);
+        // NOTE: This structure holds on to references to the observer and time, so it must capture their lifetimes
+        let mut frame = MaybeUninit::uninit();
+        let frame = unsafe {
+            let ret = novas_make_frame(
+                inner_acc,
+                &(obs.0) as *const _,
+                &(time.0) as *const _,
+                dx,
+                dy,
+                frame.as_mut_ptr(),
+            );
+            // check ret
+            assert_eq!(ret, 0);
+            frame.assume_init()
+        };
+        Ok(Frame {
+            inner: frame,
+            _marker: PhantomData,
+        })
+    }
+}

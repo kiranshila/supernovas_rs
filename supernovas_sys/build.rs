@@ -9,6 +9,10 @@ fn main() {
         .file("vendor/src/nutation.c")
         .file("vendor/src/refract.c")
         .file("vendor/src/frames.c")
+        .file("vendor/src/eph_manager.c")
+        .file("vendor/src/readeph0.c") // Dummy impl for solsys1, which is unused
+        .file("vendor/src/solsys-ephem.c")
+        .file("vendor/src/solsys3.c")
         .file("vendor/src/timescale.c")
         .compile("supernovas");
 
@@ -24,6 +28,9 @@ fn main() {
         .header("wrapper.h")
         // Only build bindings for NOVAS, not for it's dependents
         .allowlist_file(".*novas.h")
+        .allowlist_file(".*eph_manager.h")
+        .allowlist_file(".*nutation.h")
+        .allowlist_file(".*solarsystem.h")
         // Use "newtype enums" for the C enums (to avoid UB)
         .newtype_enum("novas_accuracy")
         .newtype_enum("novas_timescale")
