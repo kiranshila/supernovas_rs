@@ -1,0 +1,3 @@
+[submodule "supernovas_sys/vendor"]
+	path = supernovas_sys/vendor
+	url = https://github.com/Smithsonian/SuperNOVAS.git

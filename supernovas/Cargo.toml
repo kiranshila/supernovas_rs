@@ -1,0 +1,17 @@
+[package]
+name = "supernovas"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+supernovas_sys = {path = "../supernovas_sys"}
+thiserror = "1"
+hifitime = { version = "3", optional = true, features = ["ut1"] }
+
+[features]
+default = ["hifitime"]
+hifitime = ["dep:hifitime"]
+
+[[example]]
+name = "example"
+required-features = ["hifitime"]
