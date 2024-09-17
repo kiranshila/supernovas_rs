@@ -6,5 +6,5 @@ pub enum Error {
     #[error("The function was passed an invalid string")]
     InvalidString,
     #[error("The underlying C library errored: {0}")]
-    LowerLevel(String),
+    LowerLevel(i32),
 }
