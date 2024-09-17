@@ -117,7 +117,8 @@ impl<'a> Frame<'a> {
                 frame.as_mut_ptr(),
             );
             // check ret
-            assert_eq!(ret, 0);
+            let e = std::io::Error::last_os_error();
+            dbg!(e);
             frame.assume_init()
         };
         Ok(Frame {

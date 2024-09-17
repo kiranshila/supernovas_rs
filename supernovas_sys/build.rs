@@ -5,15 +5,19 @@ fn main() {
     // Build supernovas C library
     cc::Build::new()
         .include("vendor/include")
+        // Sources
         .file("vendor/src/novas.c")
         .file("vendor/src/nutation.c")
-        .file("vendor/src/refract.c")
-        .file("vendor/src/frames.c")
-        .file("vendor/src/eph_manager.c")
-        .file("vendor/src/readeph0.c") // Dummy impl for solsys1, which is unused
-        .file("vendor/src/solsys-ephem.c")
-        .file("vendor/src/solsys3.c")
+        .file("vendor/src/super.c")
         .file("vendor/src/timescale.c")
+        .file("vendor/src/frames.c")
+        .file("vendor/src/refract.c")
+        .file("vendor/src/solsys3.c")
+        .file("vendor/src/solsys-ephem.c")
+        // Defines
+        .define("DEFAULT_SOLSYS", "3")
+        .define("BUILTIN_SOLSYS3", "1")
+        // Build
         .compile("supernovas");
 
     // Tell cargo to invalidate the built crate whenever the wrapper changes
