@@ -1,8 +1,6 @@
 //! Routines for computing positions of local and astronomical objects
 
-use crate::{time::Timespec, Accuracy};
-
-use super::Error;
+use crate::{error::Error, time::Timespec, Accuracy};
 use std::{ffi::CString, fmt::Debug, marker::PhantomData, mem::MaybeUninit};
 use supernovas_sys::{
     cat_entry, make_cat_entry, make_observer_on_surface, novas_accuracy, novas_frame,
@@ -30,42 +28,17 @@ impl SurfaceObserver {
         // Safety: The above initialization is garunteed to succeed, so this is init
         Self(unsafe { obs_loc.assume_init() })
     }
-
-    /// Get the configured observation location longitude (Geodetic in degrees; north positive)
-    pub fn longitude(&self) -> f64 {
-        self.0.on_surf.longitude
-    }
-
-    /// Get the configured observation location latitude (Geodetic in degrees; east positive)
-    pub fn latitude(&self) -> f64 {
-        self.0.on_surf.latitude
-    }
-
-    /// Get the configured observation location elevation (Above sea level, meters)
-    pub fn elevation(&self) -> f64 {
-        self.0.on_surf.height
-    }
-
-    /// Get the configured observation location temperature (Celcius)
-    pub fn temperature(&self) -> f64 {
-        self.0.on_surf.temperature
-    }
-
-    /// Get the configured observation location pressure (mBar)
-    pub fn pressure(&self) -> f64 {
-        self.0.on_surf.pressure
-    }
 }
 
 // Spoof the debug print for the inner struct
 impl Debug for SurfaceObserver {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SurfaceObserver")
-            .field("longitude", &self.longitude())
-            .field("latitude", &self.latitude())
-            .field("elevation", &self.elevation())
-            .field("temperature", &self.temperature())
-            .field("pressure", &self.pressure())
+            .field("longitude", &self.0.on_surf.longitude)
+            .field("latitude", &self.0.on_surf.latitude)
+            .field("elevation", &self.0.on_surf.height)
+            .field("temperature", &self.0.on_surf.temperature)
+            .field("pressure", &self.0.on_surf.pressure)
             .finish()
     }
 }
