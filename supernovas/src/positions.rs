@@ -9,9 +9,9 @@ use std::{
     ptr::null,
 };
 use supernovas_sys::{
-    cat_entry, make_cat_entry, make_observer_on_surface, novas_accuracy, novas_frame,
-    novas_make_frame, novas_transform_type, observer, transform_cat, SIZE_OF_CAT_NAME,
-    SIZE_OF_OBJ_NAME,
+    cat_entry, make_cat_entry, make_cat_object, make_observer_on_surface, novas_accuracy,
+    novas_app_to_hor, novas_frame, novas_make_frame, novas_reference_system, novas_sky_pos,
+    novas_transform_type, observer, sky_pos, transform_cat, SIZE_OF_CAT_NAME, SIZE_OF_OBJ_NAME,
 };
 
 /// An observer on the surface
@@ -259,5 +259,145 @@ impl<'a> Frame<'a> {
             inner: frame,
             _marker: PhantomData,
         })
+    }
+
+    /// Computes the local coordinates (az,el in degrees) of a catalog (sidereal) source in the given ReferenceSystem
+    pub fn apparent_local_coordinates(
+        &self,
+        ref_sys: ReferenceSystem,
+        entry: &CatalogEntry,
+    ) -> super::Result<(f64, f64)> {
+        // Ignore refraction for now
+
+        // Compute the apparent position
+        let sky_pos = SkyPosition::try_from_frame_entry(entry, self, ref_sys)?;
+
+        let mut az = MaybeUninit::uninit();
+        let mut el = MaybeUninit::uninit();
+
+        let (az, el) = unsafe {
+            let _ = novas_app_to_hor(
+                &self.inner as *const _,
+                ref_sys.into(),
+                sky_pos.ra(),
+                sky_pos.dec(),
+                None,
+                az.as_mut_ptr(),
+                el.as_mut_ptr(),
+            );
+            (az.assume_init(), el.assume_init())
+        };
+
+        Ok((az, el))
+    }
+}
+
+/// Positional coordinaate reference systems
+///
+/// These determine only how the celestial pole is to be located, but not how velocities are to be referenced.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum ReferenceSystem {
+    /// Geocentric Celestial Reference system.
+    ///
+    /// Essentially the same as ICRS but includes aberration and gravitational deflection for an observer around Earth.
+    GCRS,
+    /// True equinox Of Date: dynamical system of the 'true' equator, with its origin at the 'true' equinox (pre IAU 2006 system).
+    ///
+    /// cIt is inherently less precise than the new standard CIRS because mainly because it is based on separate, and less-precise, precession and nutation models (Lieske et. al. 1977).
+    TOD,
+    /// Celestial Intermediate Reference System: dynamical system of the true equator, with its origin at the CIO (preferred since IAU 2006)
+    CIRS,
+    /// International Celestial Reference system. The equatorial system fixed to the frame of distant quasars.
+    ICRS,
+    /// The J2000 dynamical reference system
+    J2000,
+    /// Mean equinox of date: dynamical system of the 'mean' equator, with its origin at the 'mean' equinox (pre IAU 2006 system).
+    ///
+    /// It includes precession (Lieske et. al. 1977), but no nutation.
+    MOD,
+}
+
+impl From<ReferenceSystem> for novas_reference_system {
+    fn from(value: ReferenceSystem) -> Self {
+        match value {
+            ReferenceSystem::GCRS => novas_reference_system::NOVAS_GCRS,
+            ReferenceSystem::TOD => novas_reference_system::NOVAS_TOD,
+            ReferenceSystem::CIRS => novas_reference_system::NOVAS_CIRS,
+            ReferenceSystem::ICRS => novas_reference_system::NOVAS_ICRS,
+            ReferenceSystem::J2000 => novas_reference_system::NOVAS_J2000,
+            ReferenceSystem::MOD => novas_reference_system::NOVAS_MOD,
+        }
+    }
+}
+
+/// A celestial object's place on the sky
+pub struct SkyPosition(sky_pos);
+
+impl SkyPosition {
+    /// Apparent, topocentric, or astrometric declination in degrees
+    pub fn dec(&self) -> f64 {
+        self.0.dec
+    }
+
+    /// Apparent, topocentric, or astrometric right ascension in hours
+    pub fn ra(&self) -> f64 {
+        self.0.ra
+    }
+
+    /// Radial velocity in km/s
+    pub fn rad_vel(&self) -> f64 {
+        self.0.rv
+    }
+
+    /// True (geometric, Euclidian) distance to solar system body (if it is a solar system body)
+    pub fn distance(&self) -> Option<f64> {
+        if self.0.dis != 0.0 {
+            Some(self.0.dis)
+        } else {
+            None
+        }
+    }
+
+    /// Unit vector towards object (dimensionless)
+    pub fn r_hat(&self) -> &[f64; 3] {
+        &self.0.r_hat
+    }
+
+    /// Calculates an apparent location on the sky for a CatalogEntry
+    ///
+    /// This takes into account proper motion
+    pub fn try_from_frame_entry(
+        entry: &CatalogEntry,
+        frame: &Frame,
+        ref_sys: ReferenceSystem,
+    ) -> super::Result<Self> {
+        // First we need to make the `object` structure from the catalog entry
+        let mut obj = MaybeUninit::uninit();
+        // Safety: Nothing here is null and names and numbers are valid
+        // This is copying data into the object, so lifetimes here are ok
+        let obj = unsafe {
+            let _ = make_cat_object(&entry.0 as *const _, obj.as_mut_ptr());
+            obj.assume_init()
+        };
+        // The compute the sky position
+        let mut sky_pos = MaybeUninit::uninit();
+        let sky_pos = unsafe {
+            let ret = novas_sky_pos(
+                &obj as *const _,
+                &frame.inner as *const _,
+                ref_sys.into(),
+                sky_pos.as_mut_ptr(),
+            );
+            assert_eq!(ret, 0);
+            sky_pos.assume_init()
+        };
+
+        Ok(Self(sky_pos))
+    }
+}
+
+impl Debug for SkyPosition {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("SkyPosition").field(&self.0).finish()
     }
 }

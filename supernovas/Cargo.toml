@@ -4,13 +4,17 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-supernovas_sys = {path = "../supernovas_sys"}
+supernovas_sys = { path = "../supernovas_sys" }
 thiserror = "1"
 hifitime = { version = "3", optional = true, features = ["ut1"] }
+reqwest = { version = "0.12", optional = true, features = ["blocking"] }
+quick-xml = { version = "0.36", optional = true, features = ["serialize"] }
+serde = { version = "1.0", optional = true, features = ["derive"] }
 
 [features]
-default = ["hifitime"]
+default = ["hifitime", "simbad"]
 hifitime = ["dep:hifitime"]
+simbad = ["dep:reqwest", "dep:quick-xml", "dep:serde"]
 
 [[example]]
 name = "example"

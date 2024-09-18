@@ -3,6 +3,7 @@ use supernovas_sys::{novas_debug, novas_debug_mode};
 pub mod ephem;
 pub mod error;
 pub mod positions;
+pub mod simbad;
 pub mod time;
 
 pub type Result<T> = std::result::Result<T, error::Error>;

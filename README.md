@@ -5,8 +5,6 @@ A safe Rust wrapper around the [SuperNOVAS](https://smithsonian.github.io/SuperN
 ## Why
 
 - There is no reason to use C for production in this century. One segfault is too many.
-- Error handling is elegant, explicit, and always handled
-- RAII patterns make working with files and various pieces of memory significantly more ergonomic
 
 ## Implementation Details
 ### "Alternative Methodologies" for Coordinate Transformations
@@ -20,3 +18,9 @@ The old standards are available in NOVAS and SuperNOVAS, but are not wrapped her
 There are no high-level wrappers around most (Super)NOVAS time routines as these are already implemented in the
 fantastic [hifitime](https://docs.rs/hifitime/latest/hifitime/) library, with more speed, accuracy, and safety.
 Conversions to NOVAS `Timescale`s is enabled when the `hifitime` feature is enabled (as it is by default).
+
+## TODO
+
+- Neat interface around ephemeris
+- Integration with star catalog
+- Smarter error handling from C retvals

@@ -7,4 +7,7 @@ pub enum Error {
     InvalidString,
     #[error("The underlying C library errored: {0}")]
     LowerLevel(i32),
+    #[cfg(feature = "hifitime")]
+    #[error("Error from the web requests")]
+    Reqwest(#[from] reqwest::Error),
 }
