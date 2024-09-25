@@ -9,12 +9,13 @@ thiserror = "1"
 hifitime = { version = "3", optional = true, features = ["ut1"] }
 reqwest = { version = "0.12", optional = true, features = ["blocking"] }
 quick-xml = { version = "0.36", optional = true, features = ["serialize"] }
-serde = { version = "1.0", optional = true, features = ["derive"] }
+calceph = { git = "https://github.com/kiranshila/calceph_rs", optional = true, features = ["threadsafe"] }
 
 [features]
-default = ["hifitime", "simbad"]
+default = ["hifitime", "simbad", "calceph"]
 hifitime = ["dep:hifitime"]
-simbad = ["dep:reqwest", "dep:quick-xml", "dep:serde"]
+simbad = ["dep:reqwest", "dep:quick-xml"]
+calceph = ["dep:calceph"]
 
 [[example]]
 name = "example"

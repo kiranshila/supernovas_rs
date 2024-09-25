@@ -7,7 +7,16 @@ pub enum Error {
     InvalidString,
     #[error("The underlying C library errored: {0}")]
     LowerLevel(i32),
+
     #[cfg(feature = "hifitime")]
     #[error("Error from the web requests")]
     Reqwest(#[from] reqwest::Error),
+
+    #[cfg(feature = "calceph")]
+    #[error("Error from CALCEPH")]
+    Calceph(#[from] calceph::Error),
+
+    #[cfg(feature = "calceph")]
+    #[error("CALCEPH provider not loaded")]
+    EphemNotLoaded,
 }

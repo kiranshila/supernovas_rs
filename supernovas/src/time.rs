@@ -9,7 +9,7 @@ use hifitime::{ut1::Ut1Provider, Duration, Epoch};
 #[repr(u32)]
 #[allow(unused)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-enum Timescale {
+pub enum Timescale {
     /// Barycentric Coordinate Time (TCB)
     TCB = 0,
     /// Barycentric Dynamical Time (TDB)

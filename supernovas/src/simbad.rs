@@ -4,10 +4,6 @@ use std::io::BufReader;
 
 use crate::positions::CatalogEntry;
 use quick_xml::{events::Event, reader::Reader};
-use serde::Deserialize;
-
-#[derive(Deserialize)]
-struct VoTable {}
 
 impl CatalogEntry {
     /// Construct a [`CatalogEntry`] from a SIMBAD query
@@ -84,8 +80,15 @@ impl CatalogEntry {
             dec_parts[2].parse().expect("invalid dec_s"),
         );
 
+        // SIMBAD appends NAME to qualify common or historical names, which we want to drop
+        let name = if columns[0].starts_with("NAME") {
+            columns[0].strip_prefix("NAME ").unwrap().to_string()
+        } else {
+            columns[0].to_string()
+        };
+
         CatalogEntry::new_hms(
-            &columns[0],
+            &name,
             cat,
             num,
             (ra_h, ra_m, ra_s),

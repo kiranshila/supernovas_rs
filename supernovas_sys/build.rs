@@ -14,9 +14,10 @@ fn main() {
         .file("vendor/src/refract.c")
         .file("vendor/src/solsys3.c")
         .file("vendor/src/solsys-ephem.c")
-        // Defines
+        // Bake in the default, low-resolution epehm provider
         .define("DEFAULT_SOLSYS", "3")
         .define("BUILTIN_SOLSYS3", "1")
+        .define("BUILTIN_SOLSYS_EPHEM", "1")
         // Build
         .compile("supernovas");
 

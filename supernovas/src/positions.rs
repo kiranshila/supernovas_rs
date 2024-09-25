@@ -9,42 +9,86 @@ use std::{
     ptr::null,
 };
 use supernovas_sys::{
-    cat_entry, make_cat_entry, make_cat_object, make_observer_on_surface, novas_accuracy,
-    novas_app_to_hor, novas_frame, novas_make_frame, novas_reference_system, novas_sky_pos,
-    novas_transform_type, observer, sky_pos, transform_cat, SIZE_OF_CAT_NAME, SIZE_OF_OBJ_NAME,
+    cat_entry, make_cat_entry, make_cat_object, make_observer_at_geocenter, make_observer_in_space,
+    make_observer_on_surface, novas_accuracy, novas_app_to_hor, novas_frame, novas_make_frame,
+    novas_reference_system, novas_sky_pos, novas_transform_type, observer, place_star, sky_pos,
+    transform_cat, SIZE_OF_CAT_NAME, SIZE_OF_OBJ_NAME,
 };
 
-/// An observer on the surface
-pub struct SurfaceObserver(observer);
+/// An observer position
+pub struct Observer {
+    location: ObserverLocation,
+    inner: observer,
+}
 
-impl SurfaceObserver {
-    /// Construct a new SurfaceObserver
+/// The position an observer can be
+pub enum ObserverLocation {
+    /// A hypothetical observer at the Earth's geocetner
+    Geocenter,
+    /// An observer on the surface of the earth
+    Surface,
+    /// An observer in space, neaer earth (like a spacecraft)
+    Space,
+}
+
+impl Observer {
+    /// Construct a new [`Observer`] on the surface of the earth
     ///
     /// - lat: Geodetic (ITRS) latitude in degrees; north positive
     /// - lon: Geodetic (ITRS) longitude in degrees; east positive
     /// - elev: Altidude above sea level in meters
     /// - temp: Temperature in celsius
     /// - pressure: Pressure in mBar
-    pub fn new(lat: f64, lon: f64, elev: f64, temp: f64, pressure: f64) -> Self {
+    pub fn new_on_surface(lat: f64, lon: f64, elev: f64, temp: f64, pressure: f64) -> Self {
         let mut obs_loc = MaybeUninit::uninit();
         // Safety: The pointer to the obs_loc will never be null, and that is the only situation where this would error
         let _ = unsafe {
             make_observer_on_surface(lat, lon, elev, temp, pressure, obs_loc.as_mut_ptr())
         };
         // Safety: The above initialization is garunteed to succeed, so this is init
-        Self(unsafe { obs_loc.assume_init() })
+        Self {
+            location: ObserverLocation::Surface,
+            inner: unsafe { obs_loc.assume_init() },
+        }
+    }
+
+    /// Construct a new [`Observer`] at the Earth's geocenter
+    ///
+    /// - pos: (x,y,z) position in km
+    /// - vel: (x,y,z) velocity in km/s
+    pub fn new_in_space(pos: &[f64; 3], vel: &[f64; 3]) -> Self {
+        let mut obs_loc = MaybeUninit::uninit();
+        // Safety: The pointer to the obs_loc will never be null, and that is the only situation where this would error
+        let _ = unsafe { make_observer_in_space(pos.as_ptr(), vel.as_ptr(), obs_loc.as_mut_ptr()) };
+        // Safety: The above initialization is garunteed to succeed, so this is init
+        Self {
+            location: ObserverLocation::Space,
+            inner: unsafe { obs_loc.assume_init() },
+        }
+    }
+
+    /// Construct a new [`Observer`] at the Earth's geocenter
+    pub fn new_at_geocenter() -> Self {
+        let mut obs_loc = MaybeUninit::uninit();
+        // Safety: The pointer to the obs_loc will never be null, and that is the only situation where this would error
+        let _ = unsafe { make_observer_at_geocenter(obs_loc.as_mut_ptr()) };
+        // Safety: The above initialization is garunteed to succeed, so this is init
+        Self {
+            location: ObserverLocation::Geocenter,
+            inner: unsafe { obs_loc.assume_init() },
+        }
     }
 }
 
 // Spoof the debug print for the inner struct
-impl Debug for SurfaceObserver {
+impl Debug for Observer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SurfaceObserver")
-            .field("longitude", &self.0.on_surf.longitude)
-            .field("latitude", &self.0.on_surf.latitude)
-            .field("elevation", &self.0.on_surf.height)
-            .field("temperature", &self.0.on_surf.temperature)
-            .field("pressure", &self.0.on_surf.pressure)
+            .field("longitude", &self.inner.on_surf.longitude)
+            .field("latitude", &self.inner.on_surf.latitude)
+            .field("elevation", &self.inner.on_surf.height)
+            .field("temperature", &self.inner.on_surf.temperature)
+            .field("pressure", &self.inner.on_surf.pressure)
             .finish()
     }
 }
@@ -77,7 +121,7 @@ impl From<Transformation> for novas_transform_type {
 }
 
 /// Astronmetric data for any sidereal object located outside the solar system
-pub struct CatalogEntry(cat_entry);
+pub struct CatalogEntry(pub cat_entry);
 
 impl CatalogEntry {
     /// Construct a new catalog entry
@@ -232,18 +276,17 @@ pub struct Frame<'a> {
 impl<'a> Frame<'a> {
     pub fn new(
         acc: Accuracy,
-        obs: &'a SurfaceObserver,
+        obs: &'a Observer,
         time: &'a Timespec,
         dx: f64,
         dy: f64,
     ) -> super::Result<Self> {
-        let inner_acc = novas_accuracy(acc as u32);
         // NOTE: This structure holds on to references to the observer and time, so it must capture their lifetimes
         let mut frame = MaybeUninit::uninit();
         let frame = unsafe {
             let ret = novas_make_frame(
-                inner_acc,
-                &(obs.0) as *const _,
+                acc.into(),
+                &(obs.inner) as *const _,
                 &(time.0) as *const _,
                 dx,
                 dy,
@@ -386,6 +429,32 @@ impl SkyPosition {
                 &obj as *const _,
                 &frame.inner as *const _,
                 ref_sys.into(),
+                sky_pos.as_mut_ptr(),
+            );
+            assert_eq!(ret, 0);
+            sky_pos.assume_init()
+        };
+
+        Ok(Self(sky_pos))
+    }
+
+    pub fn place(
+        jd_tt: f64,
+        entry: &CatalogEntry,
+        obs: &Observer,
+        ut1_to_tt: f64,
+        ref_sys: ReferenceSystem,
+        acc: Accuracy,
+    ) -> super::Result<Self> {
+        let mut sky_pos = MaybeUninit::uninit();
+        let sky_pos = unsafe {
+            let ret = place_star(
+                jd_tt,
+                &entry.0 as *const _,
+                &obs.inner as *const _,
+                ut1_to_tt,
+                ref_sys.into(),
+                acc.into(),
                 sky_pos.as_mut_ptr(),
             );
             assert_eq!(ret, 0);
